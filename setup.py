@@ -8,5 +8,5 @@ setup(
     name="CSR Generator",
         version="1.0",
         packages=find_packages(),
-    install_requires=[ 'pyopenssl', 'argparse', 'pyyaml' ]
+    install_requires=[ 'pyopenssl', 'argparse' ]
 )

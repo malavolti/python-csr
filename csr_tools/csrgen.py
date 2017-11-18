@@ -20,10 +20,10 @@ import yaml
 
 
 # Generate Certificate Signing Request (CSR)
-def generateCSR(nodename, C, ST, L, O, OU, sans = []):
+def generateCSR(nodename, req_info, dest, sans = []):
     # These variables will be used to create the host.csr and host.key files.
-    csrfile = nodename + '.csr'
-    keyfile = nodename + '.key'
+    csrfile = dest + '/' + nodename + '.csr'
+    keyfile = dest + '/' + nodename + '.key'
     # OpenSSL Key Type Variable, passed in later.
     TYPE_RSA = crypto.TYPE_RSA
 
@@ -35,11 +35,16 @@ def generateCSR(nodename, C, ST, L, O, OU, sans = []):
 
     req = crypto.X509Req()
     req.get_subject().CN = nodename
-    req.get_subject().countryName = C
-    req.get_subject().stateOrProvinceName = ST
-    req.get_subject().localityName = L
-    req.get_subject().organizationName = O
-    req.get_subject().organizationalUnitName = OU
+
+    if(req_info == 'y' or req_info == 'Y' or req_info == 'yes' or req_info == 'Yes'):
+      C, ST, L, O, OU = getCSRSubjects()
+
+      req.get_subject().countryName = C
+      req.get_subject().stateOrProvinceName = ST
+      req.get_subject().localityName = L
+      req.get_subject().organizationName = O
+      req.get_subject().organizationalUnitName = OU
+
     # Add in extensions
     base_constraints = ([
         crypto.X509Extension("keyUsage", False, "Digital Signature, Non Repudiation, Key Encipherment"),
@@ -94,26 +99,6 @@ def getCSRSubjects():
     # O  = 'Organization'
     # OU = 'Organizational Unit'
 
-# Reading in from the FILE
-def generateFromFile(config_file, C, ST, L, O, OU):
-    print "Reading file: %s" % config_file
-    parseYAML(config_file, C, ST, L, O, OU)
-
-# Parse the contents of the YAML file and then
-# generate a CSR for each of them.
-def parseYAML(config_file, C, ST, L, O, OU):
-    with open(config_file, 'r') as stream:
-        cfg = yaml.load(stream)
-    for k,v in cfg.items():
-        hostname = cfg[k]['hostname']
-        if cfg[k]['sans']:
-            sans = cfg[k]['sans']
-        else:
-            sans = ''
-        print "host: %s, sans: %s" % (hostname, sans)
-        generateCSR(hostname, C, ST, L, O, OU, sans)
-    exit()
-
 # Generate Private Key
 def generateKey(type, bits):
     key = crypto.PKey()
@@ -126,7 +111,6 @@ def generateFiles(mkFile, request):
         f = open(mkFile, "w")
         f.write(crypto.dump_certificate_request(crypto.FILETYPE_PEM, request))
         f.close()
-        print crypto.dump_certificate_request(crypto.FILETYPE_PEM, request)
     elif ".key" in mkFile:
         f = open(mkFile, "w")
         f.write(crypto.dump_privatekey(crypto.FILETYPE_PEM, request))
@@ -135,23 +119,16 @@ def generateFiles(mkFile, request):
         print "Failed to create CSR/Key files"
         exit()
 
+if __name__ == "__main__":
+   parser = argparse.ArgumentParser()
+   parser.add_argument("-n", "--name", help="Provide the FQDN", action="store", default="")
+   parser.add_argument("-d", "--dest", help="Provide the destination PATH", action="store", default="")
+   parser.add_argument("-r", "--req_info", help="Set C,ST,L,O,OU? [y|n]", action="store", default="n")
+   parser.add_argument("-s", "--san", help="SANS", action="store", nargs='*', default="")
+   args = parser.parse_args()
 
-# Run Portion
-# This section will parse the flags available via command line.
-parser = argparse.ArgumentParser()
-parser.add_argument("-n", "--name", help="Provide the FQDN", action="store", default="")
-parser.add_argument("-f", "--file", help="Configuration file", action="store", default="")
-parser.add_argument("-s", "--san", help="SANS", action="store", nargs='*', default="")
-args = parser.parse_args()
-
-# Run the primary function.
-# Checks to see if the -f was given. If it wasn't, skip directly
-# to the generateCSR, otherwise it'll need to parse the YAML file
-# first via the functio parseYAML called via generateFromFile.
-C, ST, L, O, OU = getCSRSubjects()
-
-if args.file:
-    generateFromFile(args.file, C, ST, L, O, OU)
-else:
-    # TODO: If name is not given (minimum required), throw alert and exit.
-    generateCSR(args.name, C, ST, L, O, OU, args.san)
+   if(args.name and args.dest):
+      generateCSR(args.name, args.req_info, args.dest, args.san)
+   else:
+      print("!!! FQDN(--name) or DESTINATION(--dest) missing !!!\n")
+      parser.print_help()

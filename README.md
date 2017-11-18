@@ -1,17 +1,16 @@
 # python-csr
 ## Purpose
-Generate a key, self-signed certificate, and certificate request.
+Generate a key and certificate request.
 
 ## Information
 You'll notice there is a csrgen and csrgen35. This corresponds to their respective Python versions.
 - csrgen uses Python 2.7
-- csrgen34 uses Python 3.5
+- csrgen35 uses Python 3.5
 
 ## Installation / Dependencies
 The following modules are required:
 - OpenSSL (pyopenssl)
 - Argparse (argparse)
-- YAML (pyyaml)
 
 I've included a setup.py that will install these dependencies if you run:
 ```
